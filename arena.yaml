@@ -1,0 +1,28 @@
+# k3d/arena.yaml — «железо» локального кластера: сколько нод и какие порты.
+# Используется так: k3d cluster create arena --config k3d/arena.yaml (это делает make up)
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: arena
+image: rancher/k3s:v1.36.5-k3s1     # Kubernetes 1.36: потолок для Agones 1.60
+servers: 1                          # control plane (API, scheduler, хранилище)
+agents: 2                           # рабочие ноды
+kubeAPI:
+  hostIP: "127.0.0.1"               # API кластера доступен только с этого Mac
+  hostPort: "6550"
+ports:
+  - port: 80:80                     # HTTP: Mac -> serverlb -> все ноды
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443                   # HTTPS: так же
+    nodeFilters:
+      - loadbalancer
+  - port: 7000-7100:7000-7100/udp   # игровые серверы Agones (M8), только agent-0
+    nodeFilters:
+      - agent:0
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik      # вход в кластер будет через Envoy Gateway
+        nodeFilters:
+          - "server:*"
